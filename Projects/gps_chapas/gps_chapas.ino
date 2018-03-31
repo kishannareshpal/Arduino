@@ -20,7 +20,7 @@ char smsBuffer[90];
 float latitude, longitude, speed_kph, heading; // gps related
 char fonaNotificationBuffer[64]; //for notifications from the FONA
 char callerIDbuffer[32];  // SMS sender's number
-String sms_received;
+bool sms_received;
 int slot = 0; // this will be the slot number of the received SMS
 String sms_code;
 
@@ -38,11 +38,6 @@ void init_fona(){
   while (!Serial);
   Serial.begin(115200);
   fonaSerial->begin(4800);
-  if (! fona.begin(*fonaSerial)) {
-    Serial.println(F("Couldn't find FONA"));
-    while(1);
-  }
-  Serial.println(F("FONA is OK"));
 
   if (!fona.begin(*fonaSerial)) {
     // If fona init fails
@@ -50,8 +45,8 @@ void init_fona(){
     while(1);
   }
 
+  Serial.println(F("FONA is OK"));
   fonaSerial->print("AT+CNMI=2,1\r\n");
-
   Serial.println(F("Arduino is ready.")); // Init success
 }
 
@@ -151,7 +146,7 @@ int listen_SMS(){ // returns the message slot #
       }
       // Retrieve the slot so i can read the sms.
       Serial.print(F("FROM: ")); Serial.println(callerIDbuffer);
-      sms_received = "received";
+      sms_received = true;
       return slot;
     }
   }
@@ -202,22 +197,21 @@ bool getSaldo(char *ussd_){ // returns 0 if success; 1 if failed
 /* -------------------- DEFAULT METHODS --------------------- */
 void setup() {
   init_fona();
-  sms_received = "no";  // Becomes TRUE when a message is received (default value: false).
+  sms_received = false;  // Becomes TRUE when a message is received (default value: false).
   fona.enableGPS(true);
 }
 
 
 void loop() {
   // Send data to traccar
-  // send_data();
+  send_data();
 
   // Listen and Manage SMS
   slot = listen_SMS();
-  // Serial.println("slot number ");
-  Serial.print("SMS Received: ");
-  Serial.println(sms_received);
+  // Serial.print("SMS Received: ");
+  // Serial.println(sms_received);
 
-  if(sms_received == "received"){  // if sms is received:
+  if(sms_received){  // if sms is received:
     sms_code = read_SMS(slot);
     if(sms_code == "0"){
       // Get the Saldo:
@@ -225,11 +219,11 @@ void loop() {
       send_SMS(replybuffer);
     }
     sms_code = "";
-    sms_received = "no";
+    sms_received = false;
   }
 
   // Serial.println(received);
-  delay(2000);
+  delay(1000);
 
 
 }
