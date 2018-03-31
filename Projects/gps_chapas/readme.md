@@ -19,5 +19,5 @@
 
 | Used Libraries |
 | -------------  |
-| [Adafruit_FONA](https://github.com/adafruit/Adafruit_FONA) |
+| [Adafruit_FONA.h](https://github.com/adafruit/Adafruit_FONA) |
 | ... |
