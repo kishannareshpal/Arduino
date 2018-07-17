@@ -15,12 +15,12 @@ Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
 
 
 /* -------------------- VARIABLES --------------------- */
-char replybuffer[120]; // buffer for replies (sms or ussd)
+char replybuffer[255]; // buffer for replies (sms or ussd)
 char smsBuffer[90];
 float latitude, longitude, speed_kph, heading; // gps related
 char fonaNotificationBuffer[64]; //for notifications from the FONA
 char callerIDbuffer[32];  // SMS sender's number
-bool sms_received;
+bool received = false;  // Becomes TRUE when a message is received (default value: false).
 int slot = 0; // this will be the slot number of the received SMS
 String sms_code;
 
@@ -45,9 +45,7 @@ void init_fona(){
     while(1);
   }
 
-  Serial.println(F("FONA is OK"));
-  fonaSerial->print("AT+CNMI=2,1\r\n");
-  Serial.println(F("Arduino is ready.")); // Init success
+  Serial.println(F("Init Success!")); // Init success
 }
 
 bool send_traccar(float lat, float lon, float speed, float heading){
@@ -73,8 +71,7 @@ bool send_traccar(float lat, float lon, float speed, float heading){
   url.toCharArray(url_char, url.length());
   url.toCharArray(data, url.length());
 
-  //char data[80]=" ";
-  //197.219.3.62:5055/?id=874359200&lat=-25.278402&lon=57.501012&timestamp=20170221144438&hdop=1.4&altitude=1.7&speed=0.74";
+  //char data[80]=" "; //197.219.3.62:5055/?id=874359200&lat=-25.278402&lon=57.501012&timestamp=20170221144438&hdop=1.4&altitude=1.7&speed=0.74";
 
   Serial.print("Http POST: http://");
   Serial.println(url_char);
@@ -122,10 +119,10 @@ void send_data(){
 }
 
 int listen_SMS(){ // returns the message slot #
+
   char* bufPtr = fonaNotificationBuffer; //handy buffer pointer
   if (fona.available()){
     // any data available from the FONA?
-    slot = 0;
     int charCount = 0;
     // Read the notification into fonaInBuffer
     do {
@@ -144,9 +141,9 @@ int listen_SMS(){ // returns the message slot #
       if (!fona.getSMSSender(slot, callerIDbuffer, 31)) {
         Serial.println("Didn't find SMS message in slot!");
       }
+
       // Retrieve the slot so i can read the sms.
-      Serial.print(F("FROM: ")); Serial.println(callerIDbuffer);
-      sms_received = true;
+      received = true;
       return slot;
     }
   }
@@ -197,7 +194,6 @@ bool getSaldo(char *ussd_){ // returns 0 if success; 1 if failed
 /* -------------------- DEFAULT METHODS --------------------- */
 void setup() {
   init_fona();
-  sms_received = false;  // Becomes TRUE when a message is received (default value: false).
   fona.enableGPS(true);
 }
 
@@ -208,22 +204,23 @@ void loop() {
 
   // Listen and Manage SMS
   slot = listen_SMS();
-  // Serial.print("SMS Received: ");
-  // Serial.println(sms_received);
+  // Serial.println("slot number ");
+  // Serial.print(slot);
 
-  if(sms_received){  // if sms is received:
+
+  if(received){  // if sms is received:
     sms_code = read_SMS(slot);
     if(sms_code == "0"){
       // Get the Saldo:
-      getSaldo("*100*03#"); // over USSD Request (*151# for movitel)–(*100# for Vodacom)–(*132# for mCel)
+      getSaldo("*100*03#");
       send_SMS(replybuffer);
     }
     sms_code = "";
-    sms_received = false;
+    received = false;
   }
 
   // Serial.println(received);
-  delay(1000);
+  delay(2000);
 
 
 }

@@ -24,6 +24,7 @@ char phone[14];             // buffer for the phone number.
 char http_cmd[] = "";
 String numb;                // Stores the phone number which sends the sms_code (such as, when verifying balance)
 bool sent;                  // true: when data is sent to server succefully. false: when otherwise.
+long dist_CM;
 
 GPRS gprs(PIN_TX, PIN_RX, BAUDRATE);
 //----------------- ----------- ------------------//
@@ -78,13 +79,14 @@ boolean isANumber(String s){
         return true;
       }
     }
+
     // if it cotains any letter:
     return false;
 }
 
 // Helper function to convert String to Char*
 char* string2char(String s){
-  if(s.length()!=0){
+  if(s.length() != 0){
       char *p = const_cast<char*>(s.c_str());
       return p;
   }
@@ -256,6 +258,38 @@ bool read_sendHum(){
   return sendData("hum", String(h), "", "", "");
 }
 
+void sendConfirmation(bool sent, String controlFlag){
+    String message = "";
+    int i;
+    char c = string2char(controlFlag);
+    i = atoi(c);
+
+   switch(i){
+    case 1: // temp
+      message = "Temperature of " + String(t) + "ºC sent!";
+      break;
+
+    case 2: // dist
+      message = "Distance of " + String(dist_CM) + "cm sent!";
+      break;
+
+    case 3: // hum
+      message = "Humidity of " + String(h) + "% sent!";
+      break;
+
+    default:
+      break;
+   }
+
+   if(sent){
+     // if true
+     gprs.sendSMS(string2char(numb), string2char(message));
+   } else {
+     // otherwise
+     gprs.sendSMS(string2char(numb), string2char("Failed to send distance!"));
+   }
+}
+
 
 //...................................functions related to BAT ULTRASONIC SENSOR
 
@@ -291,17 +325,19 @@ bool read_sendHum(){
 
 bool read_sendDist(){
   // Get distance in centimeters:
-  long dist_CM = getDistance(getMicroseconds(), 1); // (1=cm OR 2=inches) - Distance(µs, unit)
+  dist_CM = getDistance(getMicroseconds(), 1); // (1=cm OR 2=inches) - Distance(µs, unit)
   // Send the distance to traccar:
   return sendData("dist", String(dist_CM), "", "", "");
 }
+
+
 
 // Send data from all sensors every 1sec, for 10sec
 void read_sendAll(){
     // Now, send temp:
     t = dht.readTemperature();
     h = dht.readHumidity();
-    long dist_CM = getDistance(getMicroseconds(), 1);
+    dist_CM = getDistance(getMicroseconds(), 1);
     sent = sendData("", "", String(t), String(h), String(dist_CM));
 }
 
@@ -331,6 +367,9 @@ void loop(){
     // Keep listenning to SMS to continue
     listen_SMS(); //listenSMS(*int digits), defaults to 4 digits.
 
+  
+    
+
     if(received){  // if sms with a valid number is received:
        if(sms_code == "0"){
          // Get the Saldo:
@@ -341,39 +380,22 @@ void loop(){
          sent = read_sendTemp();
 
          // Notify via sms that it finished sending data
-         if(sent){
-           // if true
-           gprs.sendSMS(string2char(numb), "Temperature of " + String(t) + "ºC sent!");
-         } else {
-           // otherwise
-           gprs.sendSMS(string2char(numb), "Failed to send temperature!");
-         }
+         sendConfirmation(sent, sms_code);
 
        } else if(sms_code == "2"){
-         // Send Distance reading to Traccar:
-         sent = read_sendHum();
+          // Send Humidity reading to Traccar:
+          sent = read_sendHum();
 
-         // Notify via sms that it finished sending data
-         if(sent){
-           // if true
-           gprs.sendSMS(string2char(numb), "Humidity of " + String(h) + "% sent!");
-         } else {
-           // otherwise
-           gprs.sendSMS(string2char(numb), "Failed to send humidity!");
-         }
+          // Notify via sms that it finished sending data
+          sendConfirmation(sent, sms_code);
+
 
        } else if(sms_code == "3"){
-         // Send Both (Temp and Dist) to Traccar:
-         sent = read_sendDist();
+          // Send Dist to Traccar:
+          sent = read_sendDist();
+          // Notify via sms that it finished sending data
+          sendConfirmation(sent, sms_code);
 
-         // Notify via sms that it finished sending data
-         if(sent){
-           // if true
-           gprs.sendSMS(string2char(numb), "Distance of" + String(d) + "cm sent!");
-         } else {
-           // otherwise
-           gprs.sendSMS(string2char(numb), "Failed to send distance!");
-         }
 
        } else if(sms_code == "4"){
          // Send Both (Temp and Dist) to Traccar:
@@ -381,13 +403,13 @@ void loop(){
            read_sendAll();
          }
 
-         // Notify via sms that it finished sending data
+        // Notify via sms that it finished sending data
          if(sent){
            // if true
-           gprs.sendSMS(string2char(numb), "10 data readings sent to server!");
+           gprs.sendSMS(string2char(numb), string2char("10 data readings sent to server!"));
          } else {
            // otherwise
-           gprs.sendSMS(string2char(numb), "Something wen't wrong while sending data!");
+           gprs.sendSMS(string2char(numb), string2char("Something wen't wrong while sending data!"));
          }
          received = false;
        }
