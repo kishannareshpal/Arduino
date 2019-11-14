@@ -2,6 +2,14 @@
 ||    Mareógrafo - TRACCAR    ||
 ||||||||||||||||||||||||||||||*/
 
+
+
+/*  Done:
+ *  Globals to pointers
+ *  Reorganization of main loop
+ *  
+ */
+
 #include <GPRS_Shield_Arduino.h>
 #include "DHT.h"
 #include <SoftwareSerial.h>
@@ -19,7 +27,7 @@
 char buffer[512];
 
 boolean received = false;   // Becomes TRUE when a message is received (default value: false).
-String sms_code = "NaN";    // The number of
+String sms_code = "NaN";    // The number of 
 char phone[14];             // buffer for the phone number.
 char http_cmd[] = "";
 String numb;                // Stores the phone number which sends the sms_code (such as, when verifying balance)
@@ -38,8 +46,8 @@ GPRS gprs(PIN_TX, PIN_RX, BAUDRATE);
 #define DHTTYPE DHT11
 
     /*
-        •Pin instructions:
-          --- FRONT IS WHERE THE HOLES ARE LOCATED. Pin 1 is on the Left and Pin 4 is on the right.
+        • Pin instructions:
+          --- FRONT IS WHERE THE HOLES ARE LOCATED. Pin 1 is on the far Left and Pin 4 is on the far right.
             - Connect pin 1 (on the left) of the sensor to +5V
             - Connect pin 2 of the sensor to whatever your DHTPIN is
             - Connect pin 4 (on the right) of the sensor to GROUND
@@ -71,7 +79,7 @@ DHT dht(DHTPIN, DHTTYPE);
 boolean isANumber(String s){
     /*
          • Known issues:
-         –– Returns TRUE to "a1" (alpha-numeric). (TODO: Return FALSE)
+         – Returns TRUE to "a1" (alpha-numeric). (ToDO: Must return FALSE)
     */
     for(byte i=0; i<s.length(); i++){
       if(isDigit(s.charAt(i))){
@@ -258,37 +266,7 @@ bool read_sendHum(){
   return sendData("hum", String(h), "", "", "");
 }
 
-void sendConfirmation(bool sent, String controlFlag){
-    String message = "";
-    int i;
-    char c = string2char(controlFlag);
-    i = atoi(c);
 
-   switch(i){
-    case 1: // temp
-      message = "Temperature of " + String(t) + "ºC sent!";
-      break;
-
-    case 2: // dist
-      message = "Distance of " + String(dist_CM) + "cm sent!";
-      break;
-
-    case 3: // hum
-      message = "Humidity of " + String(h) + "% sent!";
-      break;
-
-    default:
-      break;
-   }
-
-   if(sent){
-     // if true
-     gprs.sendSMS(string2char(numb), string2char(message));
-   } else {
-     // otherwise
-     gprs.sendSMS(string2char(numb), string2char("Failed to send distance!"));
-   }
-}
 
 
 //...................................functions related to BAT ULTRASONIC SENSOR
